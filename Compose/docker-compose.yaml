@@ -20,8 +20,8 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "airflow:admin,admin:admin"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: "/opt/airflow/simple_auth_manager_passwords.json.generated"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:admin"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: "/opt/airflow/simple_auth_manager_passwords.json"
       AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
       AIRFLOW__API_AUTH__JWT_SECRET: "data-qa-lab-airflow-secret"
     volumes:
@@ -29,9 +29,10 @@ services:
       - "../logs airflow:/opt/airflow/logs"
       - ../plugins:/opt/airflow/plugins
       - ../../data-qa-lab/sql:/opt/airflow/sql
+      - ../../data-qa-lab/data_generator/output:/opt/airflow/data
+      - ../simple_auth_manager_passwords.json:/opt/airflow/simple_auth_manager_passwords.json
     command: >
       bash -c "
-      echo '{\"airflow\":\"airflow\",\"admin\":\"admin\"}' > /opt/airflow/simple_auth_manager_passwords.json.generated &&
       airflow db migrate
       "
 
@@ -44,8 +45,8 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "airflow:admin,admin:admin"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: "/opt/airflow/simple_auth_manager_passwords.json.generated"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:admin"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: "/opt/airflow/simple_auth_manager_passwords.json"
       AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
       AIRFLOW__API_AUTH__JWT_SECRET: "data-qa-lab-airflow-secret"
     volumes:
@@ -53,6 +54,8 @@ services:
       - "../logs airflow:/opt/airflow/logs"
       - ../plugins:/opt/airflow/plugins
       - ../../data-qa-lab/sql:/opt/airflow/sql
+      - ../../data-qa-lab/data_generator/output:/opt/airflow/data
+      - ../simple_auth_manager_passwords.json:/opt/airflow/simple_auth_manager_passwords.json
     ports:
       - "8081:8080"
     command: api-server
@@ -67,8 +70,8 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "airflow:admin,admin:admin"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: "/opt/airflow/simple_auth_manager_passwords.json.generated"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:admin"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: "/opt/airflow/simple_auth_manager_passwords.json"
       AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
       AIRFLOW__API_AUTH__JWT_SECRET: "data-qa-lab-airflow-secret"
     volumes:
@@ -76,6 +79,8 @@ services:
       - "../logs airflow:/opt/airflow/logs"
       - ../plugins:/opt/airflow/plugins
       - ../../data-qa-lab/sql:/opt/airflow/sql
+      - ../../data-qa-lab/data_generator/output:/opt/airflow/data
+      - ../simple_auth_manager_passwords.json:/opt/airflow/simple_auth_manager_passwords.json
     command: scheduler
 
   airflow-dag-processor:
@@ -88,8 +93,8 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "airflow:admin,admin:admin"
-      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: "/opt/airflow/simple_auth_manager_passwords.json.generated"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:admin"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: "/opt/airflow/simple_auth_manager_passwords.json"
       AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
       AIRFLOW__API_AUTH__JWT_SECRET: "data-qa-lab-airflow-secret"
     volumes:
@@ -97,7 +102,14 @@ services:
       - "../logs airflow:/opt/airflow/logs"
       - ../plugins:/opt/airflow/plugins
       - ../../data-qa-lab/sql:/opt/airflow/sql
+      - ../../data-qa-lab/data_generator/output:/opt/airflow/data
+      - ../simple_auth_manager_passwords.json:/opt/airflow/simple_auth_manager_passwords.json
     command: dag-processor
 
 volumes:
   airflow-postgres-data:
+
+networks:
+  default:
+    external: true
+    name: om-lab_app_net
