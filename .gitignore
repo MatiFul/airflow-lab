@@ -7,4 +7,7 @@ logs airflow/
 
 # OS
 .DS_Store
-Thumbs.dbsimple_auth_manager_passwords.json
+Thumbs.db
+
+# Local auth / generated files
+simple_auth_manager_passwords.json
