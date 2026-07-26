@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
+import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
+import tempfile
 
 import psycopg2
 from airflow import DAG
@@ -23,6 +26,7 @@ POSTGRES_CONN = {
 SQL_BASE_PATH = Path("/opt/airflow/sql/postgres")
 DATA_PATH = Path("/opt/airflow/data")
 QA_TEST_PATH = Path("/opt/airflow/data-qa-lab")
+DBT_PROJECT_PATH = QA_TEST_PATH / "dbt"
 
 
 def run_sql_file(relative_path: str) -> None:
@@ -102,6 +106,57 @@ def run_pytest_quality_gate() -> None:
     )
 
 
+def run_dbt_build() -> None:
+    dbt_executable = shutil.which("dbt")
+    context = get_current_context()
+    dag_run = context["dag_run"]
+    max_inconsistency_rate = dag_run.conf.get("qa_max_inconsistency_rate")
+
+    if dbt_executable is None:
+        raise FileNotFoundError("No se encontró el ejecutable dbt en Airflow.")
+
+    if not (DBT_PROJECT_PATH / "dbt_project.yml").is_file():
+        raise FileNotFoundError(
+            "El proyecto dbt no está montado en /opt/airflow/data-qa-lab/dbt."
+        )
+
+    with (
+        tempfile.TemporaryDirectory(prefix="dbt-target-") as target_path,
+        tempfile.TemporaryDirectory(prefix="dbt-logs-") as log_path,
+    ):
+        command = [
+            dbt_executable,
+            "build",
+            "--project-dir",
+            str(DBT_PROJECT_PATH),
+            "--profiles-dir",
+            str(DBT_PROJECT_PATH),
+            "--target-path",
+            target_path,
+            "--log-path",
+            log_path,
+        ]
+
+        if max_inconsistency_rate is not None:
+            command.extend(
+                [
+                    "--vars",
+                    json.dumps(
+                        {
+                            "max_inconsistency_rate": max_inconsistency_rate,
+                        }
+                    ),
+                ]
+            )
+
+        subprocess.run(
+            command,
+            cwd=DBT_PROJECT_PATH,
+            env=os.environ.copy(),
+            check=True,
+        )
+
+
 with DAG(
     dag_id="qa_pipeline_postgres_v1",
     start_date=datetime(2026, 1, 1),
@@ -163,6 +218,11 @@ with DAG(
         op_kwargs={"relative_path": "documentation/01_column_comments.sql"},
     )
 
+    run_dbt_build_task = PythonOperator(
+        task_id="run_dbt_build",
+        python_callable=run_dbt_build,
+    )
+
     run_pytest_quality_gate_task = PythonOperator(
         task_id="run_pytest_quality_gate",
         python_callable=run_pytest_quality_gate,
@@ -178,5 +238,6 @@ with DAG(
         >> curado_to_refinado_postgres
         >> refinado_to_consumo_postgres
         >> apply_postgres_documentation
+        >> run_dbt_build_task
         >> run_pytest_quality_gate_task
     )
