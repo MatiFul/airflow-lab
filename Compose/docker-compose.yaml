@@ -91,6 +91,7 @@ services:
       - ../plugins:/opt/airflow/plugins
       - ../../data-qa-lab/sql:/opt/airflow/sql
       - ../../data-qa-lab/data_generator/output:/opt/airflow/data
+      - ../../data-qa-lab/dbt:/opt/airflow/data-qa-lab/dbt:ro
       - ../../data-qa-lab/tests:/opt/airflow/data-qa-lab/tests:ro
       - ../../data-qa-lab/pytest.ini:/opt/airflow/data-qa-lab/pytest.ini:ro
       - ../simple_auth_manager_passwords.json:/opt/airflow/simple_auth_manager_passwords.json
