@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime
+import os
 from pathlib import Path
+import subprocess
+import sys
 
 import psycopg2
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.sdk import get_current_context
+from airflow.providers.standard.operators.python import PythonOperator
 
 
 POSTGRES_CONN = {
@@ -18,6 +22,7 @@ POSTGRES_CONN = {
 
 SQL_BASE_PATH = Path("/opt/airflow/sql/postgres")
 DATA_PATH = Path("/opt/airflow/data")
+QA_TEST_PATH = Path("/opt/airflow/data-qa-lab")
 
 
 def run_sql_file(relative_path: str) -> None:
@@ -56,6 +61,45 @@ def load_csv_to_raw() -> None:
                         f"COPY {table_name} FROM STDIN WITH (FORMAT csv, HEADER true)",
                         csv_file,
                     )
+
+
+def run_pytest_quality_gate() -> None:
+    pytest_config = QA_TEST_PATH / "pytest.ini"
+    tests_path = QA_TEST_PATH / "tests"
+    context = get_current_context()
+    dag_run = context["dag_run"]
+    max_inconsistency_rate = dag_run.conf.get("qa_max_inconsistency_rate")
+    pytest_environment = os.environ.copy()
+
+    if not pytest_config.is_file() or not tests_path.is_dir():
+        raise FileNotFoundError(
+            "La suite de QA no está montada en /opt/airflow/data-qa-lab."
+        )
+
+    if max_inconsistency_rate is not None:
+        pytest_environment["QA_MAX_INCONSISTENCY_RATE"] = str(
+            max_inconsistency_rate
+        )
+        print(
+            "Umbral temporal solicitado para la simulación: "
+            f"{max_inconsistency_rate}"
+        )
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--config-file",
+            str(pytest_config),
+            "-p",
+            "no:cacheprovider",
+            str(tests_path),
+        ],
+        cwd=QA_TEST_PATH,
+        env=pytest_environment,
+        check=True,
+    )
 
 
 with DAG(
@@ -119,6 +163,11 @@ with DAG(
         op_kwargs={"relative_path": "documentation/01_column_comments.sql"},
     )
 
+    run_pytest_quality_gate_task = PythonOperator(
+        task_id="run_pytest_quality_gate",
+        python_callable=run_pytest_quality_gate,
+    )
+
     (
         create_raw_tables
         >> create_curado_tables
@@ -129,4 +178,5 @@ with DAG(
         >> curado_to_refinado_postgres
         >> refinado_to_consumo_postgres
         >> apply_postgres_documentation
+        >> run_pytest_quality_gate_task
     )
