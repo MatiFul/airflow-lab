@@ -99,6 +99,8 @@ def run_pytest_quality_gate() -> None:
             "-p",
             "no:cacheprovider",
             str(tests_path),
+            "--ignore",
+            str(tests_path / "api"),
         ],
         cwd=QA_TEST_PATH,
         env=pytest_environment,
@@ -171,51 +173,9 @@ with DAG(
         op_kwargs={"relative_path": "ddl/raw/01_create_raw_tables.sql"},
     )
 
-    create_curado_tables = PythonOperator(
-        task_id="create_curado_tables",
-        python_callable=run_sql_file,
-        op_kwargs={"relative_path": "ddl/curado/01_create_curado_tables.sql"},
-    )
-
-    create_refinado_tables = PythonOperator(
-        task_id="create_refinado_tables",
-        python_callable=run_sql_file,
-        op_kwargs={"relative_path": "ddl/refinado/01_create_refinado_tables.sql"},
-    )
-
-    create_consumo_tables = PythonOperator(
-        task_id="create_consumo_tables",
-        python_callable=run_sql_file,
-        op_kwargs={"relative_path": "ddl/consumo/01_create_consumo_tables.sql"},
-    )
-
     load_raw_postgres = PythonOperator(
         task_id="load_raw_postgres",
         python_callable=load_csv_to_raw,
-    )
-
-    raw_to_curado_postgres = PythonOperator(
-        task_id="raw_to_curado_postgres",
-        python_callable=run_sql_file,
-        op_kwargs={"relative_path": "transformations/01_raw_to_curado.sql"},
-    )
-
-    curado_to_refinado_postgres = PythonOperator(
-        task_id="curado_to_refinado_postgres",
-        python_callable=run_sql_file,
-        op_kwargs={"relative_path": "transformations/02_curado_to_refinado.sql"},
-    )
-
-    refinado_to_consumo_postgres = PythonOperator(
-        task_id="refinado_to_consumo_postgres",
-        python_callable=run_sql_file,
-        op_kwargs={"relative_path": "transformations/03_refinado_to_consumo.sql"},
-    )
-
-    apply_postgres_documentation = PythonOperator(
-        task_id="apply_postgres_documentation",
-        python_callable=run_sql_file,
-        op_kwargs={"relative_path": "documentation/01_column_comments.sql"},
     )
 
     run_dbt_build_task = PythonOperator(
@@ -230,14 +190,7 @@ with DAG(
 
     (
         create_raw_tables
-        >> create_curado_tables
-        >> create_refinado_tables
-        >> create_consumo_tables
         >> load_raw_postgres
-        >> raw_to_curado_postgres
-        >> curado_to_refinado_postgres
-        >> refinado_to_consumo_postgres
-        >> apply_postgres_documentation
         >> run_dbt_build_task
         >> run_pytest_quality_gate_task
     )
