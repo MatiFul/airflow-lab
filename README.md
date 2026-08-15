@@ -78,3 +78,7 @@ Este repositorio contiene la orquestación. La generación de datos, SQL RAW,
 proyecto dbt, pytest, API, Playwright, Postman y Power BI pertenecen a
 `data-qa-lab`. OpenMetadata es opcional y no forma parte de la publicación de esta
 primera versión.
+
+## Licencia
+
+Este proyecto se distribuye bajo la [licencia MIT](LICENSE).
